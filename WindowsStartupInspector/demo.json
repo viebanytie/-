@@ -1,21 +1,140 @@
 {
   "startup": {
-    "section": "startup", "collected_at": "Демонстрационный снимок", "administrator": false,
-    "warnings": ["Это вымышленные данные. Чтение Windows в режиме --demo не выполняется."],
+    "section": "startup",
+    "collected_at": "Демонстрационный снимок",
+    "administrator": false,
+    "warnings": [
+      "Это вымышленные данные. Чтение Windows в режиме --demo не выполняется."
+    ],
     "items": [
-      {"id": "demo|run", "name": "Пример приложения", "kind": "startup", "source": "Реестр (Registry64)", "owner": "Все пользователи", "command": "\"C:\\Program Files\\Example\\example.exe\" --background", "description": "Демонстрационная программа", "state": "Включено", "start_mode": "При входе", "details": "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"},
-      {"id": "demo|disabled", "name": "Отключённый ярлык", "kind": "startup", "source": "Папка Startup", "owner": "ДЕМО\\Пользователь", "command": "C:\\Example\\shortcut.lnk", "description": "Пример отключённой записи", "state": "Отключено", "start_mode": "При входе", "details": "Отметка StartupApproved: 3"},
-      {"id": "demo|task", "name": "Пример задания", "kind": "startup", "source": "Планировщик: \\Example\\", "owner": "SYSTEM", "command": "C:\\Example\\task.exe", "description": "Задание с триггером загрузки", "state": "Включено", "start_mode": "При загрузке", "details": "Условия планировщика влияют на фактический запуск."}
+      {
+        "id": "demo|run",
+        "name": "Пример приложения",
+        "kind": "startup",
+        "source": "Реестр (Registry64)",
+        "owner": "Все пользователи",
+        "command": "\"C:\\Program Files\\Example\\example.exe\" --background",
+        "description": "Демонстрационная программа",
+        "state": "Включено",
+        "start_mode": "При входе",
+        "details": "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+        "target": {
+          "type": "registry",
+          "hive": "HKLM",
+          "view": "Registry64",
+          "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+          "value": "Пример приложения"
+        }
+      },
+      {
+        "id": "demo|disabled",
+        "name": "Отключённый ярлык",
+        "kind": "startup",
+        "source": "Папка Startup",
+        "owner": "ДЕМО\\Пользователь",
+        "command": "C:\\Example\\shortcut.lnk",
+        "description": "Пример отключённой записи",
+        "state": "Отключено",
+        "start_mode": "При входе",
+        "details": "Отметка StartupApproved: 3",
+        "target": {
+          "type": "folder",
+          "folder": "C:\\Example\\Startup",
+          "filename": "shortcut.lnk",
+          "sid": ""
+        }
+      },
+      {
+        "id": "demo|task",
+        "name": "Пример задания",
+        "kind": "startup",
+        "source": "Планировщик: \\Example\\",
+        "owner": "SYSTEM",
+        "command": "C:\\Example\\task.exe",
+        "description": "Задание с триггером загрузки",
+        "state": "Включено",
+        "start_mode": "При загрузке",
+        "details": "Условия планировщика влияют на фактический запуск.",
+        "target": {
+          "type": "task",
+          "task_path": "\\Example\\",
+          "task_name": "Пример задания"
+        }
+      }
     ]
   },
   "services": {
-    "section": "services", "collected_at": "Демонстрационный снимок", "administrator": false,
-    "warnings": ["Это вымышленные данные. Состояния служб этого компьютера не проверялись."],
+    "section": "services",
+    "collected_at": "Демонстрационный снимок",
+    "administrator": false,
+    "warnings": [
+      "Это вымышленные данные. Состояния служб этого компьютера не проверялись."
+    ],
     "items": [
-      {"id": "demo|service1", "name": "Пример службы [ExampleService]", "kind": "service", "source": "Служба Windows / Win32_Service", "owner": "LocalSystem", "command": "C:\\Example\\service.exe", "description": "Пример описания службы, предоставленного Windows", "state": "Работает", "start_mode": "Автоматически (отложенно)", "details": "Зависимости: RpcSs\nТриггеров запуска/остановки: 1"},
-      {"id": "demo|service2", "name": "Отключённая служба [DisabledExample]", "kind": "service", "source": "Служба Windows / Win32_Service", "owner": "LocalService", "command": "C:\\Example\\disabled.exe", "description": "Пример остановленной и отключённой службы", "state": "Остановлена", "start_mode": "Отключена", "details": "Отключённые службы тоже включены в список."},
-      {"id": "demo|driver", "name": "Пример драйвера [ExampleDriver]", "kind": "driver", "source": "Драйвер / Win32_SystemDriver", "owner": "", "command": "\\SystemRoot\\System32\\drivers\\example.sys", "description": "Пример драйвера ядра", "state": "Работает", "start_mode": "Загрузка (Boot)", "details": "Тип: Kernel Driver"},
-      {"id": "demo|manual", "name": "Ручной запуск [ManualExample]", "kind": "service", "source": "Служба Windows / Win32_Service", "owner": "LocalSystem", "command": "C:\\Example\\manual.exe", "description": "Ручная служба с триггером", "state": "Остановлена", "start_mode": "Вручную", "details": "Триггеров запуска/остановки: 2"}
+      {
+        "id": "demo|service1",
+        "name": "Пример службы [ExampleService]",
+        "kind": "service",
+        "source": "Служба Windows / Win32_Service",
+        "owner": "LocalSystem",
+        "command": "C:\\Example\\service.exe",
+        "description": "Пример описания службы, предоставленного Windows",
+        "state": "Работает",
+        "start_mode": "Автоматически (отложенно)",
+        "details": "Зависимости: RpcSs\nТриггеров запуска/остановки: 1",
+        "target": {
+          "type": "service",
+          "name": "ExampleService"
+        }
+      },
+      {
+        "id": "demo|service2",
+        "name": "Отключённая служба [DisabledExample]",
+        "kind": "service",
+        "source": "Служба Windows / Win32_Service",
+        "owner": "LocalService",
+        "command": "C:\\Example\\disabled.exe",
+        "description": "Пример остановленной и отключённой службы",
+        "state": "Остановлена",
+        "start_mode": "Отключена",
+        "details": "Отключённые службы тоже включены в список.",
+        "target": {
+          "type": "service",
+          "name": "DisabledExample"
+        }
+      },
+      {
+        "id": "demo|driver",
+        "name": "Пример драйвера [ExampleDriver]",
+        "kind": "driver",
+        "source": "Драйвер / Win32_SystemDriver",
+        "owner": "",
+        "command": "\\SystemRoot\\System32\\drivers\\example.sys",
+        "description": "Пример драйвера ядра",
+        "state": "Работает",
+        "start_mode": "Загрузка (Boot)",
+        "details": "Тип: Kernel Driver",
+        "target": {
+          "type": "service",
+          "name": "ExampleDriver"
+        }
+      },
+      {
+        "id": "demo|manual",
+        "name": "Ручной запуск [ManualExample]",
+        "kind": "service",
+        "source": "Служба Windows / Win32_Service",
+        "owner": "LocalSystem",
+        "command": "C:\\Example\\manual.exe",
+        "description": "Ручная служба с триггером",
+        "state": "Остановлена",
+        "start_mode": "Вручную",
+        "details": "Триггеров запуска/остановки: 2",
+        "target": {
+          "type": "service",
+          "name": "ManualExample"
+        }
+      }
     ]
   }
 }

@@ -2,16 +2,19 @@
 import hashlib
 import zipfile
 from pathlib import Path
+from backend import VERSION
 
 ROOT = Path(__file__).resolve().parent
 FILES = ["backend.py", "startup_inspector.py", "inspect_windows.ps1", "demo.json",
          "BUILD.cmd", "START.cmd", "Build_StartupInspector.ps1", "requirements-build.txt",
          "README_RU.md", "TEST_REPORT.md", "make_source_zip.py", ".gitignore",
-         "tests/test_backend.py", "tests/gui_smoke.py", "tests/check_powershell.ps1"]
+         "controls.py", "manage_windows.ps1", "miner.py", "miner_window.py", "security_probe.ps1",
+         "tests/test_backend.py", "tests/gui_smoke.py", "tests/check_powershell.ps1",
+         "tests/test_controls_miner.py", "tests/check_controls.ps1", "tests/check_security.ps1"]
 
 
 def main():
-    archive_path = ROOT.parent / "WindowsStartupInspector_v1.0.0.zip"
+    archive_path = ROOT.parent / f"WindowsStartupInspector_v{VERSION}.zip"
     with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for filename in sorted(FILES):
             data = (ROOT / filename).read_bytes()

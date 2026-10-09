@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 
 @dataclass(frozen=True)
@@ -25,12 +25,17 @@ class Entry:
     state: str = ""
     start_mode: str = ""
     details: str = ""
+    target: dict = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, value: dict) -> "Entry":
         if not isinstance(value, dict) or not value.get("id") or not value.get("name"):
             raise ValueError("Запись Windows не содержит имени или идентификатора.")
-        return cls(**{key: str(value.get(key) or "") for key in cls.__dataclass_fields__})
+        target = value.get("target") or {}
+        if not isinstance(target, dict):
+            raise ValueError("Некорректный адрес записи Windows.")
+        fields = {key: str(value.get(key) or "") for key in cls.__dataclass_fields__ if key != "target"}
+        return cls(**fields, target=target)
 
 
 @dataclass
@@ -70,6 +75,15 @@ def collect_inventory(section: str, *, demo: bool = False,
     if demo:
         data = json.loads(resource_path("demo.json").read_text(encoding="utf-8"))
         return parse_inventory(json.dumps(data[section]), section)
+    result = run_windows_script("inspect_windows.ps1", ["-Section", section], runner=runner)
+    inventory = parse_inventory(result.stdout, section)
+    if result.stderr.strip():
+        inventory.warnings.append(result.stderr.strip()[:3000])
+    return inventory
+
+
+def run_windows_script(filename: str, arguments: list[str], *, timeout: int = 180,
+                       runner: Callable = subprocess.run) -> subprocess.CompletedProcess:
     if sys.platform != "win32":
         raise RuntimeError("Списки Windows доступны только в Windows 10/11. "
                            "Для просмотра интерфейса используйте --demo.")
@@ -79,23 +93,20 @@ def collect_inventory(section: str, *, demo: bool = False,
     if sys.maxsize <= 2**32 and os.environ.get("PROCESSOR_ARCHITEW6432"):
         shell = system_root / "Sysnative/WindowsPowerShell/v1.0/powershell.exe"
     args = [str(shell), "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy",
-            "Bypass", "-File", str(resource_path("inspect_windows.ps1")), "-Section", section]
+            "Bypass", "-File", str(resource_path(filename)), *arguments]
     try:
         result = runner(args, capture_output=True, text=True, encoding="utf-8-sig",
-                        errors="replace", timeout=180,
+                        errors="replace", timeout=timeout,
                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except subprocess.TimeoutExpired as exc:
-        raise RuntimeError("Windows не завершила чтение за 180 секунд. "
-                           "Проверьте службы WMI и планировщик заданий и повторите обновление.") from exc
+        raise RuntimeError(f"Windows не завершила операцию за {timeout} секунд. "
+                           "Проверьте состояние Windows и повторите операцию.") from exc
     except OSError as exc:
         raise RuntimeError(f"Не удалось запустить Windows PowerShell: {exc}") from exc
     if result.returncode:
         message = (result.stderr or result.stdout).strip()[:3000]
         raise RuntimeError(f"Ошибка чтения Windows (код {result.returncode}):\n{message}")
-    inventory = parse_inventory(result.stdout, section)
-    if result.stderr.strip():
-        inventory.warnings.append(result.stderr.strip()[:3000])
-    return inventory
+    return result
 
 
 def filter_entries(entries: list[Entry], query: str, mode: str,

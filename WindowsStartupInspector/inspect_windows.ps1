@@ -82,37 +82,47 @@ function Read-RunKeys($Hive, [string]$Prefix, [string]$Owner, [string]$HiveLabel
                    'Software\Microsoft\Windows\CurrentVersion\RunOnce',
                    'Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run')
         foreach ($relative in $paths) {
-            $key = $null
+            $key = $null; $backup = $null
             $full = $Prefix + $relative
             try {
                 $key = $base.OpenSubKey($full)
                 if (-not $key) { continue }
-                foreach ($name in $key.GetValueNames()) {
-                    try {
-                        $command = [string]$key.GetValue($name, '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
-                        $state = 'Настроено'
-                        if ($relative -eq $paths[0]) {
-                            $approval = 'Run'
-                            if ([Environment]::Is64BitOperatingSystem -and $View -eq [Microsoft.Win32.RegistryView]::Registry32) { $approval = 'Run32' }
-                            # Explorer stores both approval lists in the native registry view.
-                            $approvalBase = [Microsoft.Win32.RegistryKey]::OpenBaseKey($Hive, $nativeView)
-                            try { $state = Approval-State $approvalBase ($Prefix + 'Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\' + $approval) $name }
-                            finally { $approvalBase.Close() }
-                        }
-                        $display = $name
-                        if (-not $display) { $display = '(По умолчанию)' }
-                        Add-Item @{
-                            id = ('registry|{0}|{1}|{2}|{3}' -f $HiveLabel, $View, $full, $name)
-                            name = $display; kind = 'startup'; source = ('Реестр ({0})' -f $View)
-                            owner = $Owner; command = $command; state = $state; start_mode = 'При входе'
-                            description = (File-Description $command)
-                            details = ('Ключ: {0}\{1}' -f $HiveLabel, $full) + "`n" +
-                                      'RunOnce выполняется однократно; фактический запуск зависит от правил Windows.'
-                        }
-                    } catch { Warn ('Значение ' + $HiveLabel + '\' + $full + '\' + $name) $_ }
+                $backup = $key.OpenSubKey('WindowsStartupInspector_Disabled')
+                $locations = @(@{ key=$key; disabled=$false })
+                if ($backup) { $locations += @{ key=$backup; disabled=$true } }
+                foreach ($location in $locations) {
+                    foreach ($name in $location.key.GetValueNames()) {
+                        try {
+                            if ($location.disabled -and $key.GetValueNames() -contains $name) {
+                                Warn ('Резервная копия ' + $HiveLabel + '\' + $full + '\' + $name) 'Есть также действующее значение: конфликт резервной копии.'
+                                continue
+                            }
+                            $command = [string]$location.key.GetValue($name, '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+                            $state = 'Настроено'
+                            if ($location.disabled) { $state = 'Отключено' }
+                            elseif ($relative -eq $paths[0]) {
+                                $approval = 'Run'
+                                if ([Environment]::Is64BitOperatingSystem -and $View -eq [Microsoft.Win32.RegistryView]::Registry32) { $approval = 'Run32' }
+                                $approvalBase = [Microsoft.Win32.RegistryKey]::OpenBaseKey($Hive, $nativeView)
+                                try { $state = Approval-State $approvalBase ($Prefix + 'Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\' + $approval) $name }
+                                finally { $approvalBase.Close() }
+                            }
+                            $display = $name
+                            if (-not $display) { $display = '(По умолчанию)' }
+                            $detail = ('Ключ: {0}\{1}' -f $HiveLabel, $full)
+                            if ($location.disabled) { $detail += [Environment]::NewLine + 'Значение сохранено в WindowsStartupInspector_Disabled. В исходном ключе его нет.' }
+                            Add-Item @{
+                                id=('registry|{0}|{1}|{2}|{3}' -f $HiveLabel,$View,$full,$name)
+                                name=$display; kind='startup'; source=('Реестр ({0})' -f $View)
+                                owner=$Owner; command=$command; state=$state; start_mode='При входе'
+                                description=(File-Description $command); details=$detail
+                                target=@{type='registry';hive=$HiveLabel;view=[string]$View;key=$full;value=$name}
+                            }
+                        } catch { Warn ('Значение ' + $HiveLabel + '\' + $full + '\' + $name) $_ }
+                    }
                 }
             } catch { Warn ('Реестр ' + $HiveLabel + '\' + $full + ' / ' + $View) $_ }
-            finally { if ($key) { $key.Close() } }
+            finally { if ($backup) { $backup.Close() }; if ($key) { $key.Close() } }
         }
     } catch { Warn ('Реестр ' + $HiveLabel + ' / ' + $View) $_ }
     finally { if ($base) { $base.Close() } }
@@ -169,37 +179,47 @@ function Read-StartupFolders($Users, $Machine, [string[]]$LoadedSids) {
     try { $shell = New-Object -ComObject WScript.Shell } catch { Warn 'Чтение ярлыков Startup' $_ }
     try {
         foreach ($folder in ($folders.Keys | Sort-Object)) {
-            try {
-                # Get-Item reports access denial; Directory.Exists would silently return false.
-                $directory = Get-Item -LiteralPath $folder -Force -ErrorAction Stop
-                if (-not $directory.PSIsContainer) { continue }
-                $files = @(Get-ChildItem -LiteralPath $folder -File -Force -ErrorAction Stop)
-                foreach ($file in $files) {
-                    if ($file.Name -ieq 'desktop.ini') { continue }
-                    $command = $file.FullName
-                    $description = ''
-                    $details = 'Файл: ' + $file.FullName
-                    if ($file.Extension -ieq '.lnk' -and $shell) {
-                        $shortcut = $shell.CreateShortcut($file.FullName)
-                        $command = '"' + $shortcut.TargetPath + '" ' + $shortcut.Arguments
-                        $description = [string]$shortcut.Description
-                        $details += "`nРабочая папка: " + $shortcut.WorkingDirectory
+            $saved = Join-Path (Split-Path -Parent $folder) 'WindowsStartupInspector_Disabled_Startup'
+            foreach ($location in @(@{path=$folder;disabled=$false}, @{path=$saved;disabled=$true})) {
+                try {
+                    $directory = Get-Item -LiteralPath $location.path -Force
+                    if (-not $directory.PSIsContainer) { continue }
+                    $files = @(Get-ChildItem -LiteralPath $location.path -File -Force)
+                    foreach ($file in $files) {
+                        try {
+                            if ($file.Name -ieq 'desktop.ini') { continue }
+                            $original = Join-Path $folder $file.Name
+                            if ($location.disabled -and (Test-Path -LiteralPath $original)) {
+                                Warn ('Резервная копия Startup ' + $file.FullName) 'Исходный файл также существует; конфликт.'
+                                continue
+                            }
+                            $command = $file.FullName; $description = ''
+                            $details = 'Файл: ' + $file.FullName
+                            if ($file.Extension -ieq '.lnk' -and $shell) {
+                                $shortcut = $shell.CreateShortcut($file.FullName)
+                                $command = '"' + $shortcut.TargetPath + '" ' + $shortcut.Arguments
+                                $description = [string]$shortcut.Description
+                                $details += [Environment]::NewLine + 'Рабочая папка: ' + $shortcut.WorkingDirectory
+                            }
+                            if (-not $description) { $description = File-Description $command }
+                            $info = $folders[$folder]
+                            $state = 'Отключено'
+                            if (-not $location.disabled) {
+                                $approvalBase = $Machine; $prefix = ''
+                                if ($info.sid) { $approvalBase = $Users; $prefix = $info.sid + '\' }
+                                $state = Approval-State $approvalBase ($prefix + 'Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder') $file.Name
+                            } else { $details += [Environment]::NewLine + 'Файл перемещён из Startup; доступно обратное включение.' }
+                            Add-Item @{
+                                id=('folder|' + $original.ToLowerInvariant()); name=$file.Name
+                                kind='startup'; source='Папка Startup'; owner=$info.owner
+                                command=$command; description=$description; state=$state; start_mode='При входе'; details=$details
+                                target=@{type='folder';folder=$folder;filename=$file.Name;sid=$info.sid}
+                            }
+                        } catch { Warn ('Файл Startup ' + $file.FullName) $_ }
                     }
-                    if (-not $description) { $description = File-Description $command }
-                    $info = $folders[$folder]
-                    $approvalBase = $Machine
-                    $prefix = ''
-                    if ($info.sid) { $approvalBase = $Users; $prefix = $info.sid + '\' }
-                    $state = Approval-State $approvalBase ($prefix + 'Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder') $file.Name
-                    Add-Item @{
-                        id = ('folder|' + $file.FullName.ToLowerInvariant()); name = $file.Name
-                        kind = 'startup'; source = 'Папка Startup'; owner = $info.owner
-                        command = $command; description = $description; state = $state
-                        start_mode = 'При входе'; details = $details
-                    }
-                }
-            } catch [System.Management.Automation.ItemNotFoundException] { }
-            catch { Warn ('Папка Startup ' + $folder) $_ }
+                } catch [System.Management.Automation.ItemNotFoundException] { }
+                catch { Warn ('Папка Startup ' + $location.path) $_ }
+            }
         }
     } finally { if ($shell) { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell) } }
 }
@@ -232,6 +252,7 @@ function Read-StartupTasks {
                 if (-not $description) { $description = File-Description $command }
                 Add-Item @{
                     id = ('task|' + $task.TaskPath + $task.TaskName); name = $task.TaskName
+                    target = @{type='task';task_path=[string]$task.TaskPath;task_name=[string]$task.TaskName}
                     kind = 'startup'; source = 'Планировщик: ' + $task.TaskPath; owner = [string]$task.Principal.UserId
                     command = $command; description = $description; state = $state
                     start_mode = ($types -join ', ')
@@ -348,6 +369,7 @@ function Read-Services {
                 if (-not $display) { $display = [string]$service.Name }
                 Add-Item @{
                     id = ('service|' + $service.Name.ToLowerInvariant()); name = $display + ' [' + $service.Name + ']'
+                    target = @{type='service';name=[string]$service.Name}
                     kind = $kind; source = $source; owner = [string]$service.StartName
                     command = [string]$service.PathName; description = $description; state = $state; start_mode = $mode
                     details = ('Системное имя: {0}. Тип: {1}. Код выхода: {2}.' -f $service.Name, $service.ServiceType, $service.ExitCode) + "`n" +

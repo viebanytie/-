@@ -1,7 +1,7 @@
 ﻿# Syntax and collector logic checks. Real Windows integration remains a separate check.
 $ErrorActionPreference = 'Stop'
 $folder = Split-Path -Parent $PSScriptRoot
-foreach ($filename in @('inspect_windows.ps1', 'Build_StartupInspector.ps1', 'tests/check_powershell.ps1')) {
+foreach ($filename in @('inspect_windows.ps1', 'manage_windows.ps1', 'security_probe.ps1', 'Build_StartupInspector.ps1', 'tests/check_powershell.ps1', 'tests/check_controls.ps1', 'tests/check_security.ps1')) {
     $tokens = $null
     $parseErrors = $null
     $tree = [Management.Automation.Language.Parser]::ParseFile((Join-Path $folder $filename), [ref]$tokens, [ref]$parseErrors)

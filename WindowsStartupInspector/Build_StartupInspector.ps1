@@ -25,13 +25,18 @@ try {
     Checked $python @('-m', 'pip', 'install', '--disable-pip-version-check', '--no-input', '-r', 'requirements-build.txt')
     Checked $python @('-m', 'unittest', 'discover', '-s', 'tests', '-v')
     Checked 'powershell.exe' @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', 'tests\check_powershell.ps1')
+    Checked 'powershell.exe' @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', 'tests\check_controls.ps1')
+    Checked 'powershell.exe' @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', 'tests\check_security.ps1')
     # Keep generated spec/build files under ignored directories, never over source files.
     New-Item -ItemType Directory -Force -Path 'build' | Out-Null
     $collectorData = (Join-Path $PSScriptRoot 'inspect_windows.ps1') + ';.'
     $demoData = (Join-Path $PSScriptRoot 'demo.json') + ';.'
+    $manageData = (Join-Path $PSScriptRoot 'manage_windows.ps1') + ';.'
+    $securityData = (Join-Path $PSScriptRoot 'security_probe.ps1') + ';.'
     $buildArgs = @('-m', 'PyInstaller', '--noconfirm', '--onefile', '--windowed',
         '--name', 'WindowsStartupInspector', '--specpath', 'build', '--workpath', 'build\pyinstaller',
         '--distpath', 'dist', '--add-data', $collectorData, '--add-data', $demoData,
+        '--add-data', $manageData, '--add-data', $securityData,
         (Join-Path $PSScriptRoot 'startup_inspector.py'))
     if ($Clean) { $buildArgs += '--clean' }
     Checked $python $buildArgs
