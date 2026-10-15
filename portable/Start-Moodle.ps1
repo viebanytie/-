@@ -1,4 +1,4 @@
-param([switch]$NoBrowser)
+param([switch]$NoBrowser, [switch]$Background)
 $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
 $Runtime = Join-Path $Root 'runtime'
@@ -93,6 +93,10 @@ try {
     if ($response.StatusCode -ne 200) { throw 'Moodle did not return a working login page.' }
     Write-Host "Moodle is ready: $Url. Your login and password are in LOGIN.txt."
     if (-not $NoBrowser) { Start-Process (Join-Path $Root 'LOGIN.txt'); Start-Process "$Url/course/view.php?id=$($course.courseid)" }
+    if (-not $Background) {
+        Write-Host 'Leave this window open while using Moodle. To finish, run Stop-Moodle.cmd.'
+        while (-not $web.HasExited -or -not $db.HasExited) { Start-Sleep -Seconds 1 }
+    }
 } catch {
     Write-Host $_.Exception.Message -ForegroundColor Red
     Write-Host 'Use Stop-Moodle.cmd, then inspect runtime\logs and try Start-Moodle.cmd again.'

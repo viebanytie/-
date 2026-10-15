@@ -21,19 +21,15 @@ jobs:
           python portable/build_portable.py --output "$env:RUNNER_TEMP/Moodle_Portable" --zip "$env:RUNNER_TEMP/Moodle_Windows10_kit.zip"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install playwright
-      - name: Start actual Windows PHP and MariaDB and restore the course
+      - name: Verify course and restart with actual Windows PHP, MariaDB and Edge
         shell: powershell
         run: |
-          & "$env:RUNNER_TEMP\Moodle_Portable\Start-Moodle.ps1" -NoBrowser
+          & "$env:RUNNER_TEMP\Moodle_Portable\Start-Moodle.ps1" -NoBrowser -Background
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Verify administrator, student and course in Edge
-        shell: pwsh
-        run: python portable/test_runtime.py "$env:RUNNER_TEMP/Moodle_Portable"
-      - name: Stop cleanly and verify restart
-        shell: powershell
-        run: |
+          python portable/test_runtime.py "$env:RUNNER_TEMP/Moodle_Portable"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & "$env:RUNNER_TEMP\Moodle_Portable\Stop-Moodle.ps1"
-          & "$env:RUNNER_TEMP\Moodle_Portable\Start-Moodle.ps1" -NoBrowser
+          & "$env:RUNNER_TEMP\Moodle_Portable\Start-Moodle.ps1" -NoBrowser -Background
           & "$env:RUNNER_TEMP\Moodle_Portable\Stop-Moodle.ps1"
       - name: Publish tested offline downloads
         shell: pwsh
