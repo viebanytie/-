@@ -16,7 +16,8 @@ with sync_playwright() as p:
  online=b.new_page();r=online.goto('https://joyteka.com/ru/101145854',timeout=90000);assert r.status==200
  raw=online.locator('#__NEXT_DATA__').text_content();data=json.loads(raw)['props']['pageProps']['activity']
  assert data['template']==28 and len(data['variants'][0]['tasks'])==6
- assert data['variants'][0]['answer']==''.join(t['answer'] for t in q['tasks'])
+ assert data['exitWithCode'] is False and data['correctAnswers']==1
+ assert [t['answers'][0]['content'] for t in data['variants'][0]['tasks'][:5]]==[t['answer'] for t in q['tasks']]
  assert all(t.get('content') for t in data['variants'][0]['tasks'])
- print('PASS: anonymous Joyteka page, correct room, six uploaded materials and final answer.')
+ print('PASS: anonymous Joyteka page, correct room, five interactive tasks, correct answers and conclusion.')
  b.close()

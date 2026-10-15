@@ -29,8 +29,17 @@ jobs:
           python portable/test_runtime.py "$env:RUNNER_TEMP/Moodle_Portable"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & "$env:RUNNER_TEMP\Moodle_Portable\Stop-Moodle.ps1"
-          & "$env:RUNNER_TEMP\Moodle_Portable\Start-Moodle.ps1" -NoBrowser -Background
+          $cmd = Start-Process cmd.exe -ArgumentList @('/c', ('"' + "$env:RUNNER_TEMP\Moodle_Portable\Start-Moodle.cmd" + '"')) -PassThru -NoNewWindow
+          $alive = $false
+          for ($i=0; $i -lt 60; $i++) {
+            try {
+              $r = Invoke-WebRequest 'http://127.0.0.1:8088/login/index.php' -UseBasicParsing -TimeoutSec 5
+              if ($r.StatusCode -eq 200) { $alive = $true; break }
+            } catch { Start-Sleep -Seconds 1 }
+          }
+          if (-not $alive) { throw 'Start-Moodle.cmd restart failed.' }
           & "$env:RUNNER_TEMP\Moodle_Portable\Stop-Moodle.ps1"
+          if (-not $cmd.WaitForExit(30000)) { throw 'Launcher did not exit after clean shutdown.' }
       - name: Verify offline quest and published Joyteka room
         shell: pwsh
         run: python quest/test_windows.py

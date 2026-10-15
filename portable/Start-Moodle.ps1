@@ -92,7 +92,10 @@ try {
     $response = Invoke-WebRequest "$Url/login/index.php" -UseBasicParsing -TimeoutSec 120
     if ($response.StatusCode -ne 200) { throw 'Moodle did not return a working login page.' }
     Write-Host "Moodle is ready: $Url. Your login and password are in LOGIN.txt."
-    if (-not $NoBrowser) { Start-Process (Join-Path $Root 'LOGIN.txt'); Start-Process "$Url/course/view.php?id=$($course.courseid)" }
+    if (-not $NoBrowser) {
+        try { Start-Process (Join-Path $Root 'LOGIN.txt'); Start-Process "$Url/course/view.php?id=$($course.courseid)" }
+        catch { Write-Host "Open $Url in your browser and LOGIN.txt in Notepad." }
+    }
     if (-not $Background) {
         Write-Host 'Leave this window open while using Moodle. To finish, run Stop-Moodle.cmd.'
         while (-not $web.HasExited -or -not $db.HasExited) { Start-Sleep -Seconds 1 }

@@ -4,6 +4,7 @@ require(__DIR__.'/server/moodle/config.php');
 require_once($CFG->dirroot.'/backup/util/includes/restore_includes.php');
 require_once($CFG->dirroot.'/user/lib.php');
 $admin = get_admin();
+$DB->set_field('user', 'lang', 'ru', ['id'=>$admin->id]);
 \core\session\manager::set_user($admin);
 $course = $DB->get_record('course', ['shortname' => 'DIGITAL-SAFETY']);
 if (!$course) {
@@ -40,7 +41,6 @@ set_config('frontpage', '6');
 set_config('frontpageloggedin', '6');
 set_config('showcoursetags', 0);
 unset_config('newadminuser');
-set_config('registerauth','');
 $summary = ['courseid'=>(int)$course->id,'pages'=>$DB->count_records('page',['course'=>$course->id]),
     'quizzes'=>$DB->count_records('quiz',['course'=>$course->id]),'assignments'=>$DB->count_records('assign',['course'=>$course->id])];
 if ($summary['pages'] < 4 || $summary['quizzes'] !== 1 || $summary['assignments'] !== 1) {
