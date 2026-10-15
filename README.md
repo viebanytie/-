@@ -2,10 +2,10 @@
 
 ## Скачать готовые файлы
 
-- [Квест «Расследование утечки данных»](https://github.com/viebanytie/-/releases/download/education-20261015/Joyteka_Incident_Quest.zip).
-- [Moodle для Windows 10 с готовым курсом](https://github.com/viebanytie/-/releases/download/education-20261015/Moodle_Windows10_kit.zip).
-- [Только курс Moodle (.mbz)](https://github.com/viebanytie/-/releases/download/education-20261015/Digital_safety_course.mbz).
-- [Контрольные суммы](https://github.com/viebanytie/-/releases/download/education-20261015/SHA256SUMS.txt).
+- [Квест «Расследование утечки данных»](https://raw.githubusercontent.com/viebanytie/-/refs/heads/education/joyteka-moodle-20261015/downloads/Joyteka_Incident_Quest.zip).
+- [Moodle для Windows 10 с готовым курсом](https://raw.githubusercontent.com/viebanytie/-/refs/heads/education/joyteka-moodle-20261015/downloads/Moodle_Windows10_kit.zip).
+- [Только курс Moodle (.mbz)](https://raw.githubusercontent.com/viebanytie/-/refs/heads/education/joyteka-moodle-20261015/downloads/Digital_safety_course.mbz).
+- [Контрольные суммы](https://raw.githubusercontent.com/viebanytie/-/refs/heads/education/joyteka-moodle-20261015/downloads/SHA256SUMS.txt).
 
 ## Квест Joyteka
 
