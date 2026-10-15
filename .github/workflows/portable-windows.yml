@@ -2,7 +2,7 @@ name: Build and verify educational Windows package
 on:
   push:
     branches: [education/joyteka-moodle-20261015]
-    paths: [portable/**, .github/workflows/portable-windows.yml]
+    paths: [portable/**, quest/**, downloads/Joyteka_Incident_Quest.zip, .github/workflows/portable-windows.yml]
   workflow_dispatch:
 permissions:
   contents: write
@@ -31,6 +31,9 @@ jobs:
           & "$env:RUNNER_TEMP\Moodle_Portable\Stop-Moodle.ps1"
           & "$env:RUNNER_TEMP\Moodle_Portable\Start-Moodle.ps1" -NoBrowser -Background
           & "$env:RUNNER_TEMP\Moodle_Portable\Stop-Moodle.ps1"
+      - name: Verify offline quest and published Joyteka room
+        shell: pwsh
+        run: python quest/test_windows.py
       - name: Publish tested offline downloads
         shell: pwsh
         env:
