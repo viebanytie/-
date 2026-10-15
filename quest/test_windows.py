@@ -1,5 +1,5 @@
 from pathlib import Path
-import json,sys
+import json,sys,re,urllib.request
 from playwright.sync_api import sync_playwright
 root=Path(__file__).parent.resolve();q=json.loads((root/'joyteka_quest.json').read_text(encoding='utf-8'))
 with sync_playwright() as p:
@@ -12,9 +12,14 @@ with sync_playwright() as p:
  assert page.locator('#final').is_visible();page.reload();assert page.locator('#progress').inner_text()=='5 / 5'
  assert not errors,errors
  print('PASS: offline quest file:// launch, five solutions, completion and saved progress on Windows Edge.')
- # The public Joyteka page must contain the saved room and all six materials.
- online=b.new_page();r=online.goto('https://joyteka.com/ru/101145854',timeout=90000);assert r.status==200
- raw=online.locator('#__NEXT_DATA__').text_content();data=json.loads(raw)['props']['pageProps']['activity']
+ # Check the site's public sharing URL with ordinary verified HTTPS. Some
+ # Joyteka locale redirects loop when a headless browser is outside Russia.
+ request=urllib.request.Request('https://joyteka.com/101145854',headers={'User-Agent':'Mozilla/5.0','Accept-Language':'ru-RU,ru;q=0.9'})
+ with urllib.request.urlopen(request,timeout=90) as response:
+  assert response.status==200
+  html=response.read().decode()
+ raw=re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>',html).group(1)
+ data=json.loads(raw)['props']['pageProps']['activity']
  assert data['template']==28 and len(data['variants'][0]['tasks'])==6
  assert data['exitWithCode'] is False and data['correctAnswers']==1
  assert [t['answers'][0]['content'] for t in data['variants'][0]['tasks'][:5]]==[t['answer'] for t in q['tasks']]
