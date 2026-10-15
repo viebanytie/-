@@ -1,0 +1,26 @@
+<?php
+unset($CFG);
+global $CFG;
+$CFG = new stdClass();
+$kitroot = str_replace('\\', '/', dirname(__DIR__, 2));
+$local = json_decode(file_get_contents($kitroot . '/runtime/local.json'), true, 512, JSON_THROW_ON_ERROR);
+$CFG->dbtype = 'mariadb';
+$CFG->dblibrary = 'native';
+$CFG->dbhost = '127.0.0.1';
+$CFG->dbname = 'moodle';
+$CFG->dbuser = 'moodle';
+$CFG->dbpass = $local['database'];
+$CFG->prefix = 'mdl_';
+$CFG->dboptions = ['dbpersist' => false, 'dbport' => 3308, 'dbsocket' => '', 'dbcollation' => 'utf8mb4_unicode_ci'];
+$CFG->wwwroot = 'http://127.0.0.1:8088';
+$CFG->dataroot = $kitroot . '/runtime/moodledata';
+$CFG->admin = 'admin';
+$CFG->directorypermissions = 0777;
+$CFG->pathtophp = $kitroot . '/server/php/php.exe';
+$CFG->sessioncookie = 'PortableDigitalSafety';
+$CFG->noreplyaddress = 'noreply@example.invalid';
+$CFG->noemailever = true;
+$CFG->updateautocheck = false;
+$CFG->disableupdatenotifications = true;
+$CFG->enablemobilewebservice = false;
+require_once(__DIR__ . '/lib/setup.php');

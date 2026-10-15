@@ -1,0 +1,53 @@
+name: Build and verify educational Windows package
+on:
+  push:
+    branches: [education/joyteka-moodle-20261015]
+    paths: [portable/**, .github/workflows/portable-windows.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  portable:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build complete offline kit from verified official binaries
+        shell: pwsh
+        run: |
+          python portable/build_portable.py --output "$env:RUNNER_TEMP/Moodle_Portable" --zip "$env:RUNNER_TEMP/Moodle_Windows10_kit.zip"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install playwright
+      - name: Start actual Windows PHP and MariaDB and restore the course
+        shell: powershell
+        run: |
+          & "$env:RUNNER_TEMP\Moodle_Portable\Start-Moodle.ps1" -NoBrowser
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify administrator, student and course in Edge
+        shell: pwsh
+        run: python portable/test_runtime.py "$env:RUNNER_TEMP/Moodle_Portable"
+      - name: Stop cleanly and verify restart
+        shell: powershell
+        run: |
+          & "$env:RUNNER_TEMP\Moodle_Portable\Stop-Moodle.ps1"
+          & "$env:RUNNER_TEMP\Moodle_Portable\Start-Moodle.ps1" -NoBrowser
+          & "$env:RUNNER_TEMP\Moodle_Portable\Stop-Moodle.ps1"
+      - name: Publish tested offline downloads
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'education-portable-20261015'
+          gh release view $tag --repo '${{ github.repository }}' 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Два учебных задания: квест и Moodle для Windows' --notes 'Полные автономные комплекты. Moodle включает PHP, MariaDB, русский интерфейс и готовый курс. После извлечения архива: Start-Moodle.cmd. При первом запуске курс загружается автоматически. Дополнительные программы не нужны. Windows x64. Проверены запуск, вход преподавателя и студента, курс, тест, практика, остановка и повторный запуск на Windows runner.'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          $files = @("$env:RUNNER_TEMP/Moodle_Windows10_kit.zip", 'downloads/Joyteka_Incident_Quest.zip', 'portable/Digital_safety_course.mbz')
+          $sums = foreach ($file in $files) { (Get-FileHash $file -Algorithm SHA256).Hash.ToLower() + '  ' + [IO.Path]::GetFileName($file) }
+          [IO.File]::WriteAllLines("$env:RUNNER_TEMP/SHA256SUMS.txt", $sums)
+          gh release upload $tag @files "$env:RUNNER_TEMP/SHA256SUMS.txt" --clobber --repo '${{ github.repository }}'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
